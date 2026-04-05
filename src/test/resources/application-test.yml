@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:carbonfootprint;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:5173

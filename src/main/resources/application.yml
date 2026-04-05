@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: carbonfootprint
+  profiles:
+    active: dev
+
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.zhangsihan.carbonfootprint.entity,com.zhangsihan.carbonfootprint.vo
+  configuration:
+    map-underscore-to-camel-case: true
+
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:carbonfootprint-demo-secret-carbonfootprint-demo-secret}
+    expiration-millis: ${APP_JWT_EXPIRATION_MILLIS:86400000}

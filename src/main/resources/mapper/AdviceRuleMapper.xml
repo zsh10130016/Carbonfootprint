@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zhangsihan.carbonfootprint.mapper.AdviceRuleMapper">
+
+    <resultMap id="AdviceRuleResultMap" type="com.zhangsihan.carbonfootprint.entity.AdviceRule">
+        <id property="id" column="id"/>
+        <result property="activityType" column="activity_type"/>
+        <result property="thresholdKg" column="threshold_kg"/>
+        <result property="periodDays" column="period_days"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="suggestion" column="suggestion"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="AdviceRuleResultMap">
+        SELECT id, activity_type, threshold_kg, period_days, title, description, suggestion
+        FROM advice_rule
+        ORDER BY period_days ASC, id ASC
+    </select>
+
+</mapper>

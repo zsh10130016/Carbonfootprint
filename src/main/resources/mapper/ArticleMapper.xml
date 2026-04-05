@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zhangsihan.carbonfootprint.mapper.ArticleMapper">
+
+    <resultMap id="ArticleResultMap" type="com.zhangsihan.carbonfootprint.entity.Article">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="summary" column="summary"/>
+        <result property="content" column="content"/>
+        <result property="coverImage" column="cover_image"/>
+        <result property="author" column="author"/>
+        <result property="publishedAt" column="published_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="ArticleResultMap">
+        SELECT id, title, summary, content, cover_image, author, published_at
+        FROM article
+        ORDER BY published_at DESC, id DESC
+    </select>
+
+    <select id="findById" resultMap="ArticleResultMap">
+        SELECT id, title, summary, content, cover_image, author, published_at
+        FROM article
+        WHERE id = #{id}
+    </select>
+
+</mapper>

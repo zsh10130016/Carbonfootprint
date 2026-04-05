@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zhangsihan.carbonfootprint.mapper.UserMapper">
+
+    <resultMap id="UserResultMap" type="com.zhangsihan.carbonfootprint.entity.User">
+        <id property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="email" column="email"/>
+        <result property="fullName" column="full_name"/>
+        <result property="location" column="location"/>
+        <result property="bio" column="bio"/>
+        <result property="carbonGoal" column="carbon_goal"/>
+        <result property="role" column="role"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id, username, password, email, full_name, location, bio, carbon_goal, role, created_at, updated_at
+    </sql>
+
+    <select id="findById" resultMap="UserResultMap">
+        SELECT <include refid="BaseColumns"/> FROM `user` WHERE id = #{id}
+    </select>
+
+    <select id="findByUsername" resultMap="UserResultMap">
+        SELECT <include refid="BaseColumns"/> FROM `user` WHERE username = #{username}
+    </select>
+
+    <select id="findByEmail" resultMap="UserResultMap">
+        SELECT <include refid="BaseColumns"/> FROM `user` WHERE email = #{email}
+    </select>
+
+    <select id="findByUsernameOrEmail" resultMap="UserResultMap">
+        SELECT <include refid="BaseColumns"/>
+        FROM `user`
+        WHERE username = #{account} OR email = #{account}
+        LIMIT 1
+    </select>
+
+    <select id="findByUsernameAndEmail" resultMap="UserResultMap">
+        SELECT <include refid="BaseColumns"/>
+        FROM `user`
+        WHERE username = #{username} AND email = #{email}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `user` (username, password, email, full_name, location, bio, carbon_goal, role)
+        VALUES (#{username}, #{password}, #{email}, #{fullName}, #{location}, #{bio}, #{carbonGoal}, #{role})
+    </insert>
+
+    <update id="updateProfile">
+        UPDATE `user`
+        SET full_name = #{fullName},
+            email = #{email},
+            location = #{location},
+            bio = #{bio},
+            carbon_goal = #{carbonGoal},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE `user`
+        SET password = #{password},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zhangsihan.carbonfootprint.mapper.EmissionFactorMapper">
+
+    <resultMap id="EmissionFactorResultMap" type="com.zhangsihan.carbonfootprint.entity.EmissionFactor">
+        <id property="id" column="id"/>
+        <result property="activityType" column="activity_type"/>
+        <result property="subType" column="sub_type"/>
+        <result property="unit" column="unit"/>
+        <result property="factorValue" column="factor_value"/>
+        <result property="factorName" column="factor_name"/>
+        <result property="description" column="description"/>
+    </resultMap>
+
+    <select id="findByKey" resultMap="EmissionFactorResultMap">
+        SELECT id, activity_type, sub_type, unit, factor_value, factor_name, description
+        FROM emission_factor
+        WHERE activity_type = #{activityType}
+          AND sub_type = #{subType}
+          AND unit = #{unit}
+        LIMIT 1
+    </select>
+
+    <select id="findAll" resultMap="EmissionFactorResultMap">
+        SELECT id, activity_type, sub_type, unit, factor_value, factor_name, description
+        FROM emission_factor
+        ORDER BY activity_type, sub_type
+    </select>
+
+</mapper>

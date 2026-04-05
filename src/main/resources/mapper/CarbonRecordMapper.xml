@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zhangsihan.carbonfootprint.mapper.CarbonRecordMapper">
+
+    <resultMap id="CarbonRecordResultMap" type="com.zhangsihan.carbonfootprint.entity.CarbonRecord">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="activityType" column="activity_type"/>
+        <result property="subType" column="sub_type"/>
+        <result property="amount" column="amount"/>
+        <result property="unit" column="unit"/>
+        <result property="emissionFactorValue" column="emission_factor_value"/>
+        <result property="emissionKg" column="emission_kg"/>
+        <result property="points" column="points"/>
+        <result property="note" column="note"/>
+        <result property="occurredAt" column="occurred_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id, user_id, activity_type, sub_type, amount, unit, emission_factor_value, emission_kg, points, note, occurred_at, created_at, updated_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO carbon_record (user_id, activity_type, sub_type, amount, unit, emission_factor_value, emission_kg, points, note, occurred_at)
+        VALUES (#{userId}, #{activityType}, #{subType}, #{amount}, #{unit}, #{emissionFactorValue}, #{emissionKg}, #{points}, #{note}, #{occurredAt})
+    </insert>
+
+    <update id="updateByIdAndUserId">
+        UPDATE carbon_record
+        SET activity_type = #{activityType},
+            sub_type = #{subType},
+            amount = #{amount},
+            unit = #{unit},
+            emission_factor_value = #{emissionFactorValue},
+            emission_kg = #{emissionKg},
+            points = #{points},
+            note = #{note},
+            occurred_at = #{occurredAt},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+          AND user_id = #{userId}
+    </update>
+
+    <delete id="deleteByIdAndUserId">
+        DELETE FROM carbon_record
+        WHERE id = #{id}
+          AND user_id = #{userId}
+    </delete>
+
+    <select id="findByIdAndUserId" resultMap="CarbonRecordResultMap">
+        SELECT <include refid="BaseColumns"/>
+        FROM carbon_record
+        WHERE id = #{id}
+          AND user_id = #{userId}
+    </select>
+
+    <select id="findByCondition" resultMap="CarbonRecordResultMap">
+        SELECT <include refid="BaseColumns"/>
+        FROM carbon_record
+        WHERE user_id = #{userId}
+        <if test="query.activityType != null and query.activityType != ''">
+            AND activity_type = #{query.activityType}
+        </if>
+        <if test="query.subType != null and query.subType != ''">
+            AND sub_type = #{query.subType}
+        </if>
+        <if test="query.startDate != null">
+            AND occurred_at <![CDATA[>=]]> #{query.startDate}
+        </if>
+        <if test="query.endDate != null">
+            AND occurred_at <![CDATA[<]]> DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)
+        </if>
+        ORDER BY occurred_at DESC, id DESC
+    </select>
+
+    <select id="sumEmissionByUserId" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(emission_kg), 0)
+        FROM carbon_record
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="sumEmissionSince" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(emission_kg), 0)
+        FROM carbon_record
+        WHERE user_id = #{userId}
+          AND occurred_at <![CDATA[>=]]> #{startTime}
+    </select>
+
+    <select id="sumEmissionByActivitySince" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(emission_kg), 0)
+        FROM carbon_record
+        WHERE user_id = #{userId}
+          AND activity_type = #{activityType}
+          AND occurred_at <![CDATA[>=]]> #{startTime}
+    </select>
+
+    <select id="countByUserId" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM carbon_record
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findTopSource" resultType="java.lang.String">
+        SELECT activity_type
+        FROM carbon_record
+        WHERE user_id = #{userId}
+        GROUP BY activity_type
+        ORDER BY SUM(emission_kg) DESC
+        LIMIT 1
+    </select>
+
+    <select id="findTrend" resultType="com.zhangsihan.carbonfootprint.vo.TrendPointVO">
+        SELECT DATE_FORMAT(occurred_at, '%Y-%m-%d') AS date,
+               ROUND(SUM(emission_kg), 2) AS emissionKg
+        FROM carbon_record
+        WHERE user_id = #{userId}
+          AND occurred_at <![CDATA[>=]]> #{startTime}
+          AND occurred_at <![CDATA[<]]> #{endTime}
+        GROUP BY DATE_FORMAT(occurred_at, '%Y-%m-%d')
+        ORDER BY date ASC
+    </select>
+
+    <select id="findSourceRatios" resultType="com.zhangsihan.carbonfootprint.vo.SourceRatioVO">
+        SELECT activity_type AS name,
+               ROUND(SUM(emission_kg), 2) AS value
+        FROM carbon_record
+        WHERE user_id = #{userId}
+        GROUP BY activity_type
+        ORDER BY value DESC
+    </select>
+
+    <select id="findCategoryStats" resultType="com.zhangsihan.carbonfootprint.vo.CategoryStatVO">
+        SELECT sub_type AS name,
+               ROUND(SUM(emission_kg), 2) AS emissionKg,
+               COALESCE(SUM(points), 0) AS points
+        FROM carbon_record
+        WHERE user_id = #{userId}
+        GROUP BY sub_type
+        ORDER BY emissionKg DESC
+    </select>
+
+</mapper>

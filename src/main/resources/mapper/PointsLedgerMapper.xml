@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zhangsihan.carbonfootprint.mapper.PointsLedgerMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO points_ledger (user_id, source_record_id, points, reason)
+        VALUES (#{userId}, #{sourceRecordId}, #{points}, #{reason})
+    </insert>
+
+    <delete id="deleteBySourceRecordIdAndUserId">
+        DELETE FROM points_ledger
+        WHERE source_record_id = #{sourceRecordId}
+          AND user_id = #{userId}
+    </delete>
+
+    <select id="sumPointsByUserId" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(points), 0)
+        FROM points_ledger
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findAllRankings" resultType="com.zhangsihan.carbonfootprint.vo.RankingItemVO">
+        SELECT u.id AS userId,
+               u.username AS username,
+               u.full_name AS fullName,
+               COALESCE(SUM(p.points), 0) AS totalPoints
+        FROM `user` u
+                 LEFT JOIN points_ledger p ON u.id = p.user_id
+        GROUP BY u.id, u.username, u.full_name
+        ORDER BY totalPoints DESC, u.id ASC
+    </select>
+
+</mapper>
