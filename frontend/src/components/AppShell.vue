@@ -39,9 +39,11 @@ const navItems = [
   { label: '仪表盘', to: '/dashboard' },
   { label: '新增记录', to: '/records/new' },
   { label: '记录列表', to: '/records' },
+  { label: 'OCR识别', to: '/ocr' },
   { label: '统计分析', to: '/stats' },
   { label: '智能建议', to: '/advice' },
-  { label: '社区排行', to: '/community' }
+  { label: '社区排行', to: '/community' },
+  { label: '个人中心', to: '/profile' }
 ]
 
 function logout() {
@@ -62,7 +64,7 @@ function logout() {
 
 .header-inner {
   display: grid;
-  grid-template-columns: 1.2fr 1.3fr 1fr;
+  grid-template-columns: 1.2fr 1.4fr 1fr;
   gap: 20px;
   align-items: center;
   padding: 18px 0;

@@ -2,6 +2,7 @@ package com.zhangsihan.carbonfootprint.common;
 
 import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
@@ -48,7 +50,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleOther(Exception exception) {
+        // Keep the real stack trace in server logs, but do not expose internal details to clients.
+        log.error("Unhandled server exception", exception);
         return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.getHttpStatus())
-                .body(ApiResponse.failure(ErrorCode.INTERNAL_ERROR.getCode(), exception.getMessage()));
+                .body(ApiResponse.failure(ErrorCode.INTERNAL_ERROR.getCode(), ErrorCode.INTERNAL_ERROR.getMessage()));
     }
 }

@@ -32,13 +32,16 @@ export const useAuthStore = defineStore('auth', {
       if (!this.token) return null
       try {
         const profile = await userApi.getMe()
-        this.user = profile
-        localStorage.setItem(USER_KEY, JSON.stringify(profile))
+        this.setUser(profile)
         return profile
       } catch (error) {
         this.logout()
         throw error
       }
+    },
+    setUser(user) {
+      this.user = user
+      localStorage.setItem(USER_KEY, JSON.stringify(user))
     },
     logout() {
       this.token = ''

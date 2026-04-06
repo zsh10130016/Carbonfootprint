@@ -1,8 +1,9 @@
 spring:
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:carbonfootprint}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    # Local development defaults so the project can run directly from IDEA.
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD:zsh20031013*}
     driver-class-name: com.mysql.cj.jdbc.Driver
   sql:
     init:

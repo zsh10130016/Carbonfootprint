@@ -40,3 +40,7 @@ export const articleApi = {
   list: () => http.get('/api/articles').then((res) => res.data),
   detail: (id) => http.get(`/api/articles/${id}`).then((res) => res.data)
 }
+
+export const ocrApi = {
+  parse: (payload) => http.post('/api/ocr/parse', payload).then((res) => res.data)
+}

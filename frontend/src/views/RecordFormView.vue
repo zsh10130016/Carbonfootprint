@@ -3,6 +3,10 @@
     <div class="stack">
       <PanelCard title="新增碳足迹记录" subtitle="通过动态表单记录出行、家庭用能和饮食消费。">
         <div class="stack">
+          <div v-if="prefillSource" class="chip">
+            已从 OCR 识别结果带入字段：{{ prefillSource }}
+          </div>
+
           <div class="field-grid">
             <div class="field">
               <label>活动类型</label>
@@ -32,14 +36,19 @@
 
           <div class="field">
             <label>备注</label>
-            <textarea v-model="form.note" rows="4" placeholder="比如：晚高峰打车回宿舍 / 4 月电费账单等"></textarea>
+            <textarea
+              v-model="form.note"
+              rows="4"
+              placeholder="比如：晚高峰打车回宿舍 / 4 月电费账单等"
+            />
           </div>
 
           <div class="submit-row">
             <button class="button-primary" :disabled="submitting" @click="submit">
               {{ submitting ? '保存中...' : isEditing ? '更新记录' : '保存记录' }}
             </button>
-            <button class="button-secondary" @click="fillLowCarbonExample">填入低碳示例</button>
+            <button class="button-secondary" type="button" @click="fillLowCarbonExample">填入低碳示例</button>
+            <RouterLink class="button-secondary inline-link" to="/ocr">使用 OCR 识别</RouterLink>
           </div>
         </div>
       </PanelCard>
@@ -70,6 +79,7 @@ const form = reactive({
 
 const isEditing = computed(() => Boolean(route.query.id))
 const currentSubTypes = computed(() => activityOptions[form.activityType].subTypes)
+const prefillSource = computed(() => route.query.source || '')
 
 // Keep unit aligned with the selected subtype so the backend can match the factor table.
 watch(
@@ -83,19 +93,41 @@ watch(
 )
 
 onMounted(async () => {
-  if (!route.query.id) return
+  if (route.query.id) {
+    await loadDetail()
+    return
+  }
+  applyPrefillFromQuery()
+})
+
+async function loadDetail() {
   try {
     const detail = await recordApi.detail(route.query.id)
     form.activityType = detail.activityType
     form.subType = detail.subType
-    form.amount = detail.amount
+    form.amount = String(detail.amount)
     form.unit = detail.unit
     form.note = detail.note || ''
     form.occurredAt = formatDateTimeLocal(detail.occurredAt)
   } catch (error) {
     alert(error.message)
   }
-})
+}
+
+function applyPrefillFromQuery() {
+  if (typeof route.query.activityType === 'string' && activityOptions[route.query.activityType]) {
+    form.activityType = route.query.activityType
+  }
+  if (typeof route.query.subType === 'string') {
+    form.subType = route.query.subType
+  }
+  if (typeof route.query.amount === 'string') {
+    form.amount = route.query.amount
+  }
+  if (typeof route.query.note === 'string') {
+    form.note = route.query.note
+  }
+}
 
 async function submit() {
   submitting.value = true
@@ -142,5 +174,11 @@ function normalizeLocalDateTime(value) {
 .submit-row {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.inline-link {
+  display: inline-flex;
+  align-items: center;
 }
 </style>
