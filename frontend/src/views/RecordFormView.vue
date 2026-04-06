@@ -103,7 +103,8 @@ async function submit() {
     const payload = {
       ...form,
       amount: Number(form.amount),
-      occurredAt: new Date(form.occurredAt).toISOString().slice(0, 19)
+      // datetime-local is already a local time, so send it directly instead of converting to UTC.
+      occurredAt: normalizeLocalDateTime(form.occurredAt)
     }
     if (isEditing.value) {
       await recordApi.update(route.query.id, payload)
@@ -129,6 +130,11 @@ function formatDateTimeLocal(value) {
   const date = new Date(value)
   const pad = (num) => String(num).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function normalizeLocalDateTime(value) {
+  if (!value) return value
+  return value.length === 16 ? `${value}:00` : value.slice(0, 19)
 }
 </script>
 

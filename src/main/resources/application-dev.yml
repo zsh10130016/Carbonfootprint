@@ -6,10 +6,10 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   sql:
     init:
-      mode: always
+      # Keep MySQL data intact during normal development runs.
+      # Use the explicit init profile once when the schema/seed data needs bootstrapping.
+      mode: never
       encoding: UTF-8
-      schema-locations: classpath:schema.sql
-      data-locations: classpath:data.sql
 
 logging:
   level:
