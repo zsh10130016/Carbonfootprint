@@ -1,8 +1,17 @@
 HELP.md
 target/
-.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+
+### Logs & Runtime ###
+*.log
+*.log.*
+logs/
+*.pid
+*.pid.lock
+hs_err_pid*
+replay_pid*
 
 ### STS ###
 .apt_generated
@@ -14,7 +23,7 @@ target/
 .sts4-cache
 
 ### IntelliJ IDEA ###
-.idea
+.idea/
 *.iws
 *.iml
 *.ipr
@@ -35,3 +44,16 @@ build/
 ### Frontend ###
 frontend/node_modules/
 frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+### Local Env & Temp ###
+.env
+.env.local
+.env.*.local
+*.tmp
+*.temp
+*.bak
+Thumbs.db
+.DS_Store
