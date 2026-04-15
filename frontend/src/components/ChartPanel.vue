@@ -18,6 +18,7 @@ const props = defineProps({
 
 const chartRef = ref(null)
 let chartInstance
+let resizeObserver
 
 function renderChart() {
   if (!chartRef.value) return
@@ -27,15 +28,25 @@ function renderChart() {
   chartInstance.setOption(props.option, true)
 }
 
+function resizeChart() {
+  chartInstance?.resize()
+}
+
 onMounted(() => {
   renderChart()
-  window.addEventListener('resize', renderChart)
+  window.addEventListener('resize', resizeChart)
+  // Observe container changes so charts stay readable in responsive layouts.
+  if (typeof ResizeObserver !== 'undefined' && chartRef.value) {
+    resizeObserver = new ResizeObserver(() => resizeChart())
+    resizeObserver.observe(chartRef.value)
+  }
 })
 
 watch(() => props.option, renderChart, { deep: true })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', renderChart)
+  window.removeEventListener('resize', resizeChart)
+  resizeObserver?.disconnect()
   chartInstance?.dispose()
 })
 </script>

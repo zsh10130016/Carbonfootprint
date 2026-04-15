@@ -2,7 +2,7 @@
   <AppShell>
     <div class="stack">
       <section class="community-grid">
-        <PanelCard title="我的社区名片" subtitle="把个人积分和排名直接放到社区页的第一屏。">
+        <PanelCard title="我的社区名片" subtitle="汇总当前积分、排名和累计记录表现。">
           <div class="field-grid">
             <div>
               <div class="muted">当前排名</div>
@@ -44,11 +44,15 @@
               </tbody>
             </table>
           </div>
+          <div v-else class="empty-state">当前还没有排行数据，记录产生积分后会在这里展示。</div>
         </PanelCard>
       </section>
 
-      <PanelCard title="环保科普资讯" subtitle="答辩时可以展示系统不仅能记账，还能提供内容引导和社区互动。">
-        <div class="article-grid">
+      <p v-if="errorMessage" class="feedback error">{{ errorMessage }}</p>
+      <div v-else-if="loading" class="empty-state glass-card">正在加载社区数据...</div>
+
+      <PanelCard v-else title="环保科普资讯" subtitle="浏览低碳生活知识、政策解读和日常减排建议。">
+        <div v-if="articles.length" class="article-grid">
           <RouterLink
             v-for="article in articles"
             :key="article.id"
@@ -63,6 +67,7 @@
             </div>
           </RouterLink>
         </div>
+        <div v-else class="empty-state">暂无资讯内容。</div>
       </PanelCard>
     </div>
   </AppShell>
@@ -75,11 +80,17 @@ import { articleApi, communityApi } from '../api/modules'
 import AppShell from '../components/AppShell.vue'
 import PanelCard from '../components/PanelCard.vue'
 
+const loading = ref(true)
+const errorMessage = ref('')
 const profile = ref({ rank: '-', totalPoints: 0, totalRecords: 0, totalEmission: 0 })
 const rankings = ref([])
 const articles = ref([])
 
-onMounted(async () => {
+onMounted(loadCommunityData)
+
+async function loadCommunityData() {
+  loading.value = true
+  errorMessage.value = ''
   try {
     ;[profile.value, rankings.value, articles.value] = await Promise.all([
       communityApi.me(),
@@ -87,9 +98,11 @@ onMounted(async () => {
       articleApi.list()
     ])
   } catch (error) {
-    alert(error.message)
+    errorMessage.value = error.message || '社区数据加载失败，请稍后重试。'
+  } finally {
+    loading.value = false
   }
-})
+}
 </script>
 
 <style scoped>

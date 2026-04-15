@@ -1,10 +1,10 @@
 <template>
   <AppShell>
     <div class="stack">
-      <PanelCard title="新增碳足迹记录" subtitle="通过动态表单记录出行、家庭用能和饮食消费。">
-        <div class="stack">
+      <PanelCard :title="panelTitle" :subtitle="panelSubtitle">
+        <form class="stack" @submit.prevent="submit">
           <div v-if="prefillSource" class="chip">
-            已从 OCR 识别结果带入字段：{{ prefillSource }}
+            已从外部解析结果带入字段：{{ prefillSource }}
           </div>
 
           <div class="field-grid">
@@ -42,15 +42,17 @@
               placeholder="比如：晚高峰打车回宿舍 / 4 月电费账单等"
             />
           </div>
+          <p class="helper-text">保存后系统会自动匹配排放因子，计算碳排放和积分。</p>
+          <p v-if="message" :class="['feedback', isError ? 'error' : 'success']">{{ message }}</p>
 
           <div class="submit-row">
-            <button class="button-primary" :disabled="submitting" @click="submit">
+            <button class="button-primary" type="submit" :disabled="submitting || loadingDetail">
               {{ submitting ? '保存中...' : isEditing ? '更新记录' : '保存记录' }}
             </button>
-            <button class="button-secondary" type="button" @click="fillLowCarbonExample">填入低碳示例</button>
+            <button class="button-secondary" type="button" :disabled="submitting || loadingDetail" @click="fillLowCarbonExample">快速填充参考记录</button>
             <RouterLink class="button-secondary inline-link" to="/ocr">使用 OCR 识别</RouterLink>
           </div>
-        </div>
+        </form>
       </PanelCard>
     </div>
   </AppShell>
@@ -67,7 +69,10 @@ import { activityOptions } from '../config/activity-options'
 
 const route = useRoute()
 const router = useRouter()
+const loadingDetail = ref(false)
 const submitting = ref(false)
+const message = ref('')
+const isError = ref(false)
 const form = reactive({
   activityType: 'TRANSPORT',
   subType: 'BUS',
@@ -80,6 +85,12 @@ const form = reactive({
 const isEditing = computed(() => Boolean(route.query.id))
 const currentSubTypes = computed(() => activityOptions[form.activityType].subTypes)
 const prefillSource = computed(() => route.query.source || '')
+const panelTitle = computed(() => (isEditing.value ? '编辑碳足迹记录' : '新增碳足迹记录'))
+const panelSubtitle = computed(() => (
+  isEditing.value
+    ? '修改已录入的出行、家庭用能或饮食消费数据。'
+    : '通过动态表单记录出行、家庭用能和饮食消费。'
+))
 
 // Keep unit aligned with the selected subtype so the backend can match the factor table.
 watch(
@@ -101,6 +112,9 @@ onMounted(async () => {
 })
 
 async function loadDetail() {
+  loadingDetail.value = true
+  message.value = ''
+  isError.value = false
   try {
     const detail = await recordApi.detail(route.query.id)
     form.activityType = detail.activityType
@@ -110,7 +124,10 @@ async function loadDetail() {
     form.note = detail.note || ''
     form.occurredAt = formatDateTimeLocal(detail.occurredAt)
   } catch (error) {
-    alert(error.message)
+    isError.value = true
+    message.value = error.message || '记录详情加载失败，请返回列表后重试。'
+  } finally {
+    loadingDetail.value = false
   }
 }
 
@@ -130,7 +147,16 @@ function applyPrefillFromQuery() {
 }
 
 async function submit() {
+  const validationMessage = validateForm()
+  if (validationMessage) {
+    isError.value = true
+    message.value = validationMessage
+    return
+  }
+
   submitting.value = true
+  message.value = ''
+  isError.value = false
   try {
     const payload = {
       ...form,
@@ -145,7 +171,8 @@ async function submit() {
     }
     router.push('/records')
   } catch (error) {
-    alert(error.message)
+    isError.value = true
+    message.value = error.message || '记录保存失败，请稍后重试。'
   } finally {
     submitting.value = false
   }
@@ -155,7 +182,7 @@ function fillLowCarbonExample() {
   form.activityType = 'TRANSPORT'
   form.subType = 'SUBWAY'
   form.amount = '12'
-  form.note = '地铁通勤示例'
+  form.note = '地铁通勤'
 }
 
 function formatDateTimeLocal(value) {
@@ -167,6 +194,14 @@ function formatDateTimeLocal(value) {
 function normalizeLocalDateTime(value) {
   if (!value) return value
   return value.length === 16 ? `${value}:00` : value.slice(0, 19)
+}
+
+function validateForm() {
+  if (!form.activityType) return '请选择活动类型。'
+  if (!form.subType) return '请选择子类型。'
+  if (!form.occurredAt) return '请选择记录时间。'
+  if (!form.amount || Number(form.amount) <= 0) return '请输入大于 0 的数值。'
+  return ''
 }
 </script>
 

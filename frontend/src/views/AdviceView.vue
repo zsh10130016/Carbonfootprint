@@ -2,7 +2,9 @@
   <AppShell>
     <div class="stack">
       <PanelCard title="智能建议" subtitle="系统根据最近一段时间的排放数据，识别高排放风险并给出针对性建议。">
-        <div v-if="adviceList.length" class="advice-grid">
+        <p v-if="errorMessage" class="feedback error">{{ errorMessage }}</p>
+        <div v-else-if="loading" class="empty-state">正在分析近期排放数据...</div>
+        <div v-else-if="adviceList.length" class="advice-grid">
           <article v-for="item in adviceList" :key="item.title" class="glass-card advice-card">
             <div class="chip">{{ item.activityType }}</div>
             <h3>{{ item.title }}</h3>
@@ -31,15 +33,23 @@ import { adviceApi } from '../api/modules'
 import AppShell from '../components/AppShell.vue'
 import PanelCard from '../components/PanelCard.vue'
 
+const loading = ref(true)
+const errorMessage = ref('')
 const adviceList = ref([])
 
-onMounted(async () => {
+onMounted(loadAdvice)
+
+async function loadAdvice() {
+  loading.value = true
+  errorMessage.value = ''
   try {
     adviceList.value = await adviceApi.list()
   } catch (error) {
-    alert(error.message)
+    errorMessage.value = error.message || '智能建议加载失败，请稍后重试。'
+  } finally {
+    loading.value = false
   }
-})
+}
 </script>
 
 <style scoped>

@@ -1,8 +1,8 @@
 <template>
   <AppShell>
     <div class="stack">
-      <PanelCard title="OCR 智能识别" subtitle="当前使用 mock 识别器演示接口链路，后续可以直接替换为真实 OCR 服务。">
-        <div class="stack">
+      <PanelCard title="票据解析" subtitle="将票据文本解析为结构化字段，并带入碳记录表单。当前为内置解析模式，后续可接入真实 OCR 服务。">
+        <form class="stack" @submit.prevent="parse">
           <div class="field-grid">
             <div class="field">
               <label>票据类型</label>
@@ -18,17 +18,19 @@
             <textarea
               v-model="form.rawText"
               rows="7"
-              placeholder="可粘贴一段票据文本作为演示输入，例如：高铁票 杭州东到上海虹桥 15km"
+              placeholder="可粘贴交通票据或水电账单文本，例如：高铁票 杭州东到上海虹桥 15km"
             />
           </div>
+          <p class="helper-text">解析完成后可以直接带入记录表单，再由系统继续完成碳核算和积分计算。</p>
+          <p v-if="message" :class="['feedback', isError ? 'error' : 'info']">{{ message }}</p>
 
           <div class="submit-row">
-            <button class="button-primary" :disabled="submitting" @click="parse">
+            <button class="button-primary" type="submit" :disabled="submitting">
               {{ submitting ? '识别中...' : '开始识别' }}
             </button>
-            <button class="button-secondary" type="button" @click="fillSample">填入示例文本</button>
+            <button class="button-secondary" type="button" @click="fillSample">快速填充参考文本</button>
           </div>
-        </div>
+        </form>
       </PanelCard>
 
       <PanelCard v-if="result" title="识别结果" :subtitle="result.message">
@@ -67,7 +69,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { ocrApi } from '../api/modules'
@@ -77,6 +79,8 @@ import PanelCard from '../components/PanelCard.vue'
 const router = useRouter()
 const submitting = ref(false)
 const result = ref(null)
+const message = ref('')
+const isError = ref(false)
 const form = reactive({
   documentType: 'TRANSPORT_TICKET',
   rawText: ''
@@ -92,12 +96,31 @@ const mappedActivityTypeLabel = computed(() => (
 
 const prettyResult = computed(() => JSON.stringify(result.value?.fields || {}, null, 2))
 
+watch(
+  () => form.documentType,
+  () => {
+    result.value = null
+    message.value = ''
+    isError.value = false
+  }
+)
+
 async function parse() {
+  if (!form.rawText.trim()) {
+    isError.value = true
+    message.value = '请先输入待解析的票据文本。'
+    return
+  }
+
   submitting.value = true
+  message.value = ''
+  isError.value = false
   try {
     result.value = await ocrApi.parse({ ...form })
+    message.value = '解析完成，请确认识别字段后再带入记录表单。'
   } catch (error) {
-    alert(error.message)
+    isError.value = true
+    message.value = error.message || '票据解析失败，请检查输入内容后重试。'
   } finally {
     submitting.value = false
   }
@@ -116,11 +139,11 @@ function goToRecordForm() {
   router.push({
     path: '/records/new',
     query: {
-      source: 'OCR 识别',
+      source: '票据解析',
       activityType: mappedActivityType.value,
       subType: result.value.fields?.subType || '',
       amount: result.value.fields?.amount || '',
-      note: `${mappedActivityTypeLabel.value} OCR 识别结果`
+      note: `${mappedActivityTypeLabel.value}票据解析导入`
     }
   })
 }

@@ -1,7 +1,7 @@
 <template>
   <AppShell>
     <div class="stack">
-      <PanelCard title="统计分析" subtitle="把趋势、结构和分类结果放在同一页，适合答辩时完整展示分析能力。">
+      <PanelCard title="统计分析" subtitle="集中查看趋势、结构和分类结果，便于对不同来源的碳排放进行对比分析。">
         <div class="stats-headline">
           <span class="chip">趋势分析</span>
           <span class="chip">来源占比</span>
@@ -9,12 +9,17 @@
         </div>
       </PanelCard>
 
-      <div class="stats-layout">
-        <ChartPanel title="近 7 天趋势" subtitle="每日排放量变化" :option="trendOption" />
-        <ChartPanel title="来源占比" subtitle="哪类活动贡献最高" :option="ratioOption" />
-      </div>
+      <p v-if="errorMessage" class="feedback error">{{ errorMessage }}</p>
+      <div v-else-if="loading" class="empty-state glass-card">正在加载统计数据...</div>
+      <div v-else-if="!hasAnyData" class="empty-state glass-card">暂无统计数据，新增记录后这里会自动生成趋势和占比图表。</div>
+      <template v-else>
+        <div class="stats-layout">
+          <ChartPanel title="近 7 天趋势" subtitle="每日排放量变化" :option="trendOption" />
+          <ChartPanel title="来源占比" subtitle="哪类活动贡献最高" :option="ratioOption" />
+        </div>
 
-      <ChartPanel title="分类统计" subtitle="不同子类型的排放与积分对比" :option="categoryOption" />
+        <ChartPanel title="分类统计" subtitle="不同子类型的排放与积分对比" :option="categoryOption" />
+      </template>
     </div>
   </AppShell>
 </template>
@@ -27,9 +32,12 @@ import AppShell from '../components/AppShell.vue'
 import ChartPanel from '../components/ChartPanel.vue'
 import PanelCard from '../components/PanelCard.vue'
 
+const loading = ref(true)
+const errorMessage = ref('')
 const trend = ref([])
 const ratio = ref([])
 const categories = ref([])
+const hasAnyData = computed(() => trend.value.length || ratio.value.length || categories.value.length)
 
 const trendOption = computed(() => ({
   tooltip: { trigger: 'axis' },
@@ -54,7 +62,11 @@ const categoryOption = computed(() => ({
   ]
 }))
 
-onMounted(async () => {
+onMounted(loadStats)
+
+async function loadStats() {
+  loading.value = true
+  errorMessage.value = ''
   try {
     ;[trend.value, ratio.value, categories.value] = await Promise.all([
       dashboardApi.trend(),
@@ -62,9 +74,11 @@ onMounted(async () => {
       dashboardApi.categories()
     ])
   } catch (error) {
-    alert(error.message)
+    errorMessage.value = error.message || '统计数据加载失败，请稍后重试。'
+  } finally {
+    loading.value = false
   }
-})
+}
 </script>
 
 <style scoped>

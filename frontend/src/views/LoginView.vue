@@ -1,7 +1,7 @@
 <template>
   <div class="login-page">
     <div class="login-hero">
-      <p class="hero-tag">Graduation Project</p>
+      <p class="hero-tag">Carbon Footprint</p>
       <h1>个人碳足迹计算与管理系统</h1>
       <p class="hero-copy">
         把日常出行、家庭用能和饮食消费转成可量化的数据，再通过趋势、结构和建议帮你看清自己的低碳轨迹。
@@ -26,19 +26,19 @@
         </button>
       </div>
 
-      <div class="stack">
+      <form class="stack" @submit.prevent="submit">
         <div class="field-grid">
           <div v-if="mode !== 'login'" class="field">
             <label>用户名</label>
-            <input v-model="form.username" placeholder="请输入用户名" />
+            <input v-model="form.username" autocomplete="username" placeholder="请输入用户名" />
           </div>
           <div v-if="mode === 'login'" class="field">
             <label>{{ mode === 'login' ? '账号' : '邮箱' }}</label>
-            <input v-model="form.account" placeholder="用户名或邮箱" />
+            <input v-model="form.account" autocomplete="username" placeholder="用户名或邮箱" />
           </div>
           <div v-else class="field">
             <label>邮箱</label>
-            <input v-model="form.email" placeholder="请输入邮箱" />
+            <input v-model="form.email" autocomplete="email" placeholder="请输入邮箱" />
           </div>
           <div v-if="mode === 'register'" class="field">
             <label>姓名</label>
@@ -46,16 +46,17 @@
           </div>
           <div class="field">
             <label>{{ mode === 'reset' ? '新密码' : '密码' }}</label>
-            <input v-model="form.password" type="password" placeholder="请输入密码" />
+            <input v-model="form.password" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" type="password" placeholder="请输入密码" />
           </div>
         </div>
+        <p class="helper-text">{{ modeHint }}</p>
 
         <p v-if="message" :class="['feedback', isError ? 'error' : 'success']">{{ message }}</p>
 
-        <button class="button-primary auth-submit" :disabled="submitting" @click="submit">
+        <button class="button-primary auth-submit" type="submit" :disabled="submitting">
           {{ submitting ? '提交中...' : currentLabel }}
         </button>
-      </div>
+      </form>
     </section>
   </div>
 </template>
@@ -91,14 +92,29 @@ const form = reactive({
 const currentLabel = computed(() => (
   mode.value === 'login' ? '进入系统' : mode.value === 'register' ? '创建账号' : '重置密码'
 ))
+const modeHint = computed(() => (
+  mode.value === 'login'
+    ? '支持使用用户名或邮箱登录。'
+    : mode.value === 'register'
+      ? '注册后会自动进入系统，并创建个人碳足迹档案。'
+      : '输入用户名、邮箱和新密码后即可完成密码重置。'
+))
 
 function switchMode(nextMode) {
   mode.value = nextMode
   message.value = ''
   isError.value = false
+  form.password = ''
 }
 
 async function submit() {
+  const validationMessage = validateForm()
+  if (validationMessage) {
+    isError.value = true
+    message.value = validationMessage
+    return
+  }
+
   submitting.value = true
   message.value = ''
   isError.value = false
@@ -124,12 +140,31 @@ async function submit() {
       newPassword: form.password
     })
     message.value = '密码已重置，现在可以直接登录。'
+    mode.value = 'login'
+    form.account = form.username || form.email
+    form.password = ''
   } catch (error) {
     isError.value = true
     message.value = error.message
   } finally {
     submitting.value = false
   }
+}
+
+function validateForm() {
+  if (mode.value === 'login') {
+    if (!form.account.trim()) return '请输入账号。'
+    if (!form.password) return '请输入密码。'
+    return ''
+  }
+
+  if (!form.username.trim()) return '请输入用户名。'
+  if (!form.email.trim()) return '请输入邮箱。'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return '请输入正确的邮箱格式。'
+  if (!form.password) return mode.value === 'reset' ? '请输入新密码。' : '请输入密码。'
+  if (form.password.length < 6 || form.password.length > 20) return '密码长度需在 6 到 20 位之间。'
+  if (mode.value === 'register' && !form.fullName.trim()) return '请输入姓名。'
+  return ''
 }
 </script>
 
@@ -204,22 +239,6 @@ async function submit() {
 .tab-button.active {
   color: #fff;
   background: linear-gradient(135deg, var(--brand), var(--brand-deep));
-}
-
-.feedback {
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: 14px;
-}
-
-.feedback.error {
-  background: rgba(199, 88, 79, 0.12);
-  color: var(--danger);
-}
-
-.feedback.success {
-  background: rgba(47, 143, 91, 0.12);
-  color: var(--brand-deep);
 }
 
 .auth-submit {

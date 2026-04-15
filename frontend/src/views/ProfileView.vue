@@ -24,7 +24,7 @@
 
       <div class="profile-grid">
         <PanelCard title="编辑资料" subtitle="保存后会同步更新右上角登录信息。">
-          <div class="stack">
+          <form class="stack" @submit.prevent="saveProfile">
             <div class="field-grid">
               <div class="field">
                 <label>姓名</label>
@@ -47,15 +47,16 @@
               <label>个人简介</label>
               <textarea v-model="profileForm.bio" rows="4" placeholder="介绍一下你的绿色生活习惯或项目角色" />
             </div>
+            <p class="helper-text">每周低碳目标会作为你后续记录和分析时的参考值。</p>
             <p v-if="profileMessage" :class="['feedback', profileError ? 'error' : 'success']">{{ profileMessage }}</p>
-            <button class="button-primary" :disabled="profileSubmitting" @click="saveProfile">
+            <button class="button-primary" type="submit" :disabled="profileSubmitting">
               {{ profileSubmitting ? '保存中...' : '保存资料' }}
             </button>
-          </div>
+          </form>
         </PanelCard>
 
-        <PanelCard title="修改密码" subtitle="建议答辩演示时一起展示账号安全相关能力。">
-          <div class="stack">
+        <PanelCard title="修改密码" subtitle="更新登录密码和账户安全信息。">
+          <form class="stack" @submit.prevent="changePassword">
             <div class="field">
               <label>旧密码</label>
               <input v-model="passwordForm.oldPassword" type="password" />
@@ -64,11 +65,16 @@
               <label>新密码</label>
               <input v-model="passwordForm.newPassword" type="password" />
             </div>
+            <div class="field">
+              <label>确认新密码</label>
+              <input v-model="passwordForm.confirmPassword" type="password" />
+            </div>
+            <p class="helper-text">密码长度需为 6 到 20 位，修改成功后下次登录使用新密码。</p>
             <p v-if="passwordMessage" :class="['feedback', passwordError ? 'error' : 'success']">{{ passwordMessage }}</p>
-            <button class="button-primary" :disabled="passwordSubmitting" @click="changePassword">
+            <button class="button-primary" type="submit" :disabled="passwordSubmitting">
               {{ passwordSubmitting ? '提交中...' : '修改密码' }}
             </button>
-          </div>
+          </form>
         </PanelCard>
       </div>
     </div>
@@ -76,7 +82,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 
 import { userApi } from '../api/modules'
 import AppShell from '../components/AppShell.vue'
@@ -92,19 +98,39 @@ const profileError = ref(false)
 const passwordError = ref(false)
 
 const profileForm = reactive({
-  fullName: authStore.user?.fullName || '',
-  email: authStore.user?.email || '',
-  location: authStore.user?.location || '',
-  bio: authStore.user?.bio || '',
-  carbonGoal: authStore.user?.carbonGoal ?? 50
+  fullName: '',
+  email: '',
+  location: '',
+  bio: '',
+  carbonGoal: 50
 })
 
 const passwordForm = reactive({
   oldPassword: '',
-  newPassword: ''
+  newPassword: '',
+  confirmPassword: ''
 })
 
+watch(
+  () => authStore.user,
+  (user) => {
+    profileForm.fullName = user?.fullName || ''
+    profileForm.email = user?.email || ''
+    profileForm.location = user?.location || ''
+    profileForm.bio = user?.bio || ''
+    profileForm.carbonGoal = user?.carbonGoal ?? 50
+  },
+  { immediate: true }
+)
+
 async function saveProfile() {
+  const validationMessage = validateProfileForm()
+  if (validationMessage) {
+    profileError.value = true
+    profileMessage.value = validationMessage
+    return
+  }
+
   profileSubmitting.value = true
   profileMessage.value = ''
   profileError.value = false
@@ -124,20 +150,51 @@ async function saveProfile() {
 }
 
 async function changePassword() {
+  const validationMessage = validatePasswordForm()
+  if (validationMessage) {
+    passwordError.value = true
+    passwordMessage.value = validationMessage
+    return
+  }
+
   passwordSubmitting.value = true
   passwordMessage.value = ''
   passwordError.value = false
   try {
-    await userApi.changePassword({ ...passwordForm })
+    await userApi.changePassword({
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword
+    })
     passwordMessage.value = '密码修改成功。'
     passwordForm.oldPassword = ''
     passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
   } catch (error) {
     passwordError.value = true
     passwordMessage.value = error.message
   } finally {
     passwordSubmitting.value = false
   }
+}
+
+function validateProfileForm() {
+  if (!profileForm.fullName.trim()) return '请输入姓名。'
+  if (!profileForm.email.trim()) return '请输入邮箱。'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email.trim())) return '请输入正确的邮箱格式。'
+  if (Number(profileForm.carbonGoal) < 0) return '每周低碳目标不能小于 0。'
+  return ''
+}
+
+function validatePasswordForm() {
+  if (!passwordForm.oldPassword) return '请输入旧密码。'
+  if (!passwordForm.newPassword) return '请输入新密码。'
+  if (passwordForm.newPassword.length < 6 || passwordForm.newPassword.length > 20) {
+    return '新密码长度需在 6 到 20 位之间。'
+  }
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    return '两次输入的新密码不一致。'
+  }
+  return ''
 }
 </script>
 
@@ -150,22 +207,6 @@ async function changePassword() {
 
 .profile-value {
   margin: 8px 0 0;
-}
-
-.feedback {
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: 14px;
-}
-
-.feedback.error {
-  background: rgba(199, 88, 79, 0.12);
-  color: var(--danger);
-}
-
-.feedback.success {
-  background: rgba(47, 143, 91, 0.12);
-  color: var(--brand-deep);
 }
 
 @media (max-width: 960px) {

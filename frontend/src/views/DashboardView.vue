@@ -5,7 +5,7 @@
         <div>
           <h1 class="banner-title">欢迎回来，{{ authStore.user?.fullName || authStore.user?.username }}</h1>
           <p class="section-subtitle">
-            这里会持续追踪你的碳排放节奏、主要来源和本周变化，适合答辩演示时先讲“系统的价值和主界面”。
+            这里会持续追踪你的排放节奏、主要来源和积分变化，帮助你更快找到值得优化的低碳行动方向。
           </p>
         </div>
         <div class="chip-group">
@@ -14,17 +14,21 @@
         </div>
       </section>
 
-      <section class="stats-grid">
-        <StatCard label="累计排放" :value="`${formatNumber(summary.totalEmission)} kg`" tip="系统自动累计所有记录" />
-        <StatCard label="本周排放" :value="`${formatNumber(summary.weekEmission)} kg`" tip="近 7 天统计" />
-        <StatCard label="积分" :value="summary.totalPoints" tip="低碳行为会沉淀成排行积分" />
-        <StatCard label="主要来源" :value="summary.topSource || '暂无'" tip="按排放量最高的类别识别" />
-      </section>
+      <p v-if="errorMessage" class="feedback error">{{ errorMessage }}</p>
+      <div v-else-if="loading" class="empty-state glass-card">正在加载首页数据...</div>
+      <template v-else>
+        <section class="stats-grid">
+          <StatCard label="累计排放" :value="`${formatNumber(summary.totalEmission)} kg`" tip="系统自动累计所有记录" />
+          <StatCard label="本周排放" :value="`${formatNumber(summary.weekEmission)} kg`" tip="近 7 天统计" />
+          <StatCard label="积分" :value="summary.totalPoints" tip="低碳行为会沉淀成排行积分" />
+          <StatCard label="主要来源" :value="summary.topSource || '暂无'" tip="按排放量最高的类别识别" />
+        </section>
 
-      <div class="dashboard-grid">
-        <ChartPanel title="本周碳排放趋势" subtitle="近 7 天每日排放变化" :option="trendOption" />
-        <ChartPanel title="排放来源占比" subtitle="帮助识别当前的主要排放来源" :option="ratioOption" />
-      </div>
+        <div class="dashboard-grid">
+          <ChartPanel title="本周碳排放趋势" subtitle="近 7 天每日排放变化" :option="trendOption" />
+          <ChartPanel title="排放来源占比" subtitle="帮助识别当前的主要排放来源" :option="ratioOption" />
+        </div>
+      </template>
     </div>
   </AppShell>
 </template>
@@ -39,6 +43,8 @@ import StatCard from '../components/StatCard.vue'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
+const loading = ref(true)
+const errorMessage = ref('')
 const summary = ref({
   totalEmission: 0,
   weekEmission: 0,
@@ -79,7 +85,11 @@ const ratioOption = computed(() => ({
   ]
 }))
 
-onMounted(async () => {
+onMounted(loadDashboard)
+
+async function loadDashboard() {
+  loading.value = true
+  errorMessage.value = ''
   try {
     ;[summary.value, trend.value, ratio.value] = await Promise.all([
       dashboardApi.summary(),
@@ -87,9 +97,11 @@ onMounted(async () => {
       dashboardApi.sourceRatio()
     ])
   } catch (error) {
-    alert(error.message)
+    errorMessage.value = error.message || '首页数据加载失败，请稍后重试。'
+  } finally {
+    loading.value = false
   }
-})
+}
 
 function formatNumber(value) {
   return Number(value || 0).toFixed(2)
