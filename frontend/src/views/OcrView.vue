@@ -1,7 +1,7 @@
 <template>
   <AppShell>
     <div class="stack">
-      <PanelCard title="票据解析" subtitle="将票据文本解析为结构化字段，并带入碳记录表单。当前为内置解析模式，后续可接入真实 OCR 服务。">
+      <PanelCard title="OCR 智能识别" subtitle="上传交通票据或水电账单图片，系统会调用百度 OCR 提取关键字段并带入碳记录表单。">
         <form class="stack" @submit.prevent="parse">
           <div class="field-grid">
             <div class="field">
@@ -11,24 +11,35 @@
                 <option value="UTILITY_BILL">水电账单</option>
               </select>
             </div>
+            <div class="field">
+              <label>图片文件</label>
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/jpeg,image/png,image/bmp"
+                @change="handleFileChange"
+              />
+            </div>
           </div>
 
-          <div class="field">
-            <label>原始文本</label>
-            <textarea
-              v-model="form.rawText"
-              rows="7"
-              placeholder="可粘贴交通票据或水电账单文本，例如：高铁票 杭州东到上海虹桥 15km"
-            />
+          <div v-if="selectedFile" class="upload-preview">
+            <img v-if="previewUrl" :src="previewUrl" :alt="selectedFile.name" />
+            <div>
+              <strong>{{ selectedFile.name }}</strong>
+              <p class="helper-text">{{ formatFileSize(selectedFile.size) }}，{{ selectedFile.type || '未知格式' }}</p>
+              <button class="button-secondary" type="button" @click="clearFile">重新选择图片</button>
+            </div>
           </div>
-          <p class="helper-text">解析完成后可以直接带入记录表单，再由系统继续完成碳核算和积分计算。</p>
+
+          <p class="helper-text">
+            建议上传清晰、无遮挡的 JPG、PNG 或 BMP 图片。识别完成后可先核对字段，再自动带入记录表单。
+          </p>
           <p v-if="message" :class="['feedback', isError ? 'error' : 'info']">{{ message }}</p>
 
           <div class="submit-row">
-            <button class="button-primary" type="submit" :disabled="submitting">
-              {{ submitting ? '识别中...' : '开始识别' }}
+            <button class="button-primary" type="submit" :disabled="submitting || !selectedFile">
+              {{ submitting ? '正在调用百度 OCR...' : '开始识别图片' }}
             </button>
-            <button class="button-secondary" type="button" @click="fillSample">快速填充参考文本</button>
           </div>
         </form>
       </PanelCard>
@@ -42,25 +53,30 @@
             </div>
             <div class="field">
               <label>推荐活动类型</label>
-              <input :value="mappedActivityTypeLabel" readonly />
+              <input :value="activityTypeLabel" readonly />
             </div>
             <div class="field">
               <label>推荐子类型</label>
-              <input :value="result.fields?.subType || ''" readonly />
+              <input :value="subTypeLabel" readonly />
             </div>
             <div class="field">
               <label>推荐数值</label>
-              <input :value="result.fields?.amount || ''" readonly />
+              <input :value="amountLabel" readonly />
             </div>
           </div>
 
           <div class="field">
-            <label>识别字段</label>
+            <label>识别到的文字</label>
+            <pre class="result-box">{{ recognizedText }}</pre>
+          </div>
+
+          <div class="field">
+            <label>结构化字段</label>
             <pre class="result-box">{{ prettyResult }}</pre>
           </div>
 
           <div class="submit-row">
-            <button class="button-primary" @click="goToRecordForm">带入记录表单</button>
+            <button class="button-primary" :disabled="!canFillRecord" @click="goToRecordForm">带入记录表单</button>
           </div>
         </div>
       </PanelCard>
@@ -69,32 +85,41 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { ocrApi } from '../api/modules'
 import AppShell from '../components/AppShell.vue'
 import PanelCard from '../components/PanelCard.vue'
+import { activityOptions } from '../config/activity-options'
+
+const MAX_FILE_SIZE = 8 * 1024 * 1024
+const SUPPORTED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp']
 
 const router = useRouter()
 const submitting = ref(false)
 const result = ref(null)
 const message = ref('')
 const isError = ref(false)
+const fileInput = ref(null)
+const selectedFile = ref(null)
+const previewUrl = ref('')
 const form = reactive({
-  documentType: 'TRANSPORT_TICKET',
-  rawText: ''
+  documentType: 'TRANSPORT_TICKET'
 })
 
-const mappedActivityType = computed(() => (
-  form.documentType === 'UTILITY_BILL' ? 'HOME_ENERGY' : 'TRANSPORT'
+const fields = computed(() => result.value?.fields || {})
+const activityTypeLabel = computed(() => activityOptions[fields.value.activityType]?.label || '未识别')
+const subTypeLabel = computed(() => {
+  const options = activityOptions[fields.value.activityType]?.subTypes || []
+  return options.find((item) => item.value === fields.value.subType)?.label || fields.value.subType || '未识别'
+})
+const amountLabel = computed(() => (
+  fields.value.amount ? `${fields.value.amount} ${fields.value.unit || ''}` : '未识别到，带入后可手动补充'
 ))
-
-const mappedActivityTypeLabel = computed(() => (
-  mappedActivityType.value === 'HOME_ENERGY' ? '家庭用能' : '绿色出行'
-))
-
-const prettyResult = computed(() => JSON.stringify(result.value?.fields || {}, null, 2))
+const recognizedText = computed(() => result.value?.rawText || '暂无识别文本')
+const prettyResult = computed(() => JSON.stringify(fields.value, null, 2))
+const canFillRecord = computed(() => Boolean(fields.value.activityType && fields.value.subType))
 
 watch(
   () => form.documentType,
@@ -105,10 +130,51 @@ watch(
   }
 )
 
-async function parse() {
-  if (!form.rawText.trim()) {
+onBeforeUnmount(() => revokePreviewUrl())
+
+function handleFileChange(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  result.value = null
+  message.value = ''
+  isError.value = false
+
+  const fileType = (file.type || '').toLowerCase()
+  if (!SUPPORTED_FILE_TYPES.includes(fileType)) {
+    selectedFile.value = null
+    revokePreviewUrl()
     isError.value = true
-    message.value = '请先输入待解析的票据文本。'
+    message.value = '仅支持 JPG、PNG 或 BMP 格式的票据图片。'
+    return
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    selectedFile.value = null
+    revokePreviewUrl()
+    isError.value = true
+    message.value = '图片大小不能超过 8MB。'
+    return
+  }
+
+  selectedFile.value = file
+  revokePreviewUrl()
+  previewUrl.value = URL.createObjectURL(file)
+}
+
+function clearFile() {
+  selectedFile.value = null
+  result.value = null
+  message.value = ''
+  isError.value = false
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+  revokePreviewUrl()
+}
+
+async function parse() {
+  if (!selectedFile.value) {
+    isError.value = true
+    message.value = '请先选择需要识别的票据图片。'
     return
   }
 
@@ -116,36 +182,45 @@ async function parse() {
   message.value = ''
   isError.value = false
   try {
-    result.value = await ocrApi.parse({ ...form })
-    message.value = '解析完成，请确认识别字段后再带入记录表单。'
+    const payload = new FormData()
+    payload.append('documentType', form.documentType)
+    payload.append('file', selectedFile.value)
+    result.value = await ocrApi.parse(payload)
+    message.value = result.value.message
   } catch (error) {
     isError.value = true
-    message.value = error.message || '票据解析失败，请检查输入内容后重试。'
+    message.value = error.message || 'OCR 识别失败，请检查图片或稍后重试。'
   } finally {
     submitting.value = false
   }
 }
 
-function fillSample() {
-  if (form.documentType === 'UTILITY_BILL') {
-    form.rawText = '电费账单：本期用电 18 度，账单金额 12.6 元'
-  } else {
-    form.rawText = '交通票据：高铁行程 15 km，杭州东到上海虹桥'
-  }
-}
-
 function goToRecordForm() {
-  if (!result.value) return
+  if (!canFillRecord.value) return
   router.push({
     path: '/records/new',
     query: {
-      source: '票据解析',
-      activityType: mappedActivityType.value,
-      subType: result.value.fields?.subType || '',
-      amount: result.value.fields?.amount || '',
-      note: `${mappedActivityTypeLabel.value}票据解析导入`
+      source: '百度 OCR',
+      activityType: fields.value.activityType,
+      subType: fields.value.subType,
+      amount: fields.value.amount || '',
+      note: `${activityTypeLabel.value}票据自动识别导入`
     }
   })
+}
+
+function formatFileSize(size) {
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(1)} KB`
+  }
+  return `${(size / 1024 / 1024).toFixed(2)} MB`
+}
+
+function revokePreviewUrl() {
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
 }
 </script>
 
@@ -156,11 +231,42 @@ function goToRecordForm() {
   flex-wrap: wrap;
 }
 
+.upload-preview {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 18px;
+  align-items: center;
+  padding: 16px;
+  border: 1px dashed rgba(47, 143, 91, 0.28);
+  border-radius: 20px;
+  background: rgba(47, 143, 91, 0.06);
+}
+
+.upload-preview img {
+  width: 180px;
+  height: 128px;
+  object-fit: cover;
+  border-radius: 16px;
+  background: #fff;
+}
+
 .result-box {
   margin: 0;
   padding: 14px;
+  max-height: 260px;
   border-radius: 16px;
   background: rgba(47, 143, 91, 0.08);
   overflow: auto;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 720px) {
+  .upload-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-preview img {
+    width: 100%;
+  }
 }
 </style>
