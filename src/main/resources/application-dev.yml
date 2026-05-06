@@ -11,6 +11,10 @@ spring:
       # Use the explicit init profile once when the schema/seed data needs bootstrapping.
       mode: never
       encoding: UTF-8
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 logging:
   level:
@@ -19,3 +23,9 @@ logging:
 app:
   cors:
     allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  baidu-ocr:
+    api-key: ${BAIDU_OCR_API_KEY:e53CntkqvOGnAeKiePcANksB}
+    secret-key: ${BAIDU_OCR_SECRET_KEY:JxzBvTaqMKmTcsrHCQrHJT8Z3ZGUe890}
+    token-url: ${BAIDU_OCR_TOKEN_URL:https://aip.baidubce.com/oauth/2.0/token}
+    recognize-url: ${BAIDU_OCR_RECOGNIZE_URL:https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic}
+    max-image-size: ${BAIDU_OCR_MAX_IMAGE_SIZE:8388608}

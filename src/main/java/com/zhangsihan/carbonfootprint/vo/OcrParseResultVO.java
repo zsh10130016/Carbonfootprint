@@ -1,5 +1,6 @@
 package com.zhangsihan.carbonfootprint.vo;
 
+import java.util.List;
 import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
@@ -11,5 +12,7 @@ public class OcrParseResultVO {
     private String provider;
     private String documentType;
     private String message;
+    private String rawText;
+    private List<String> words;
     private Map<String, String> fields;
 }
