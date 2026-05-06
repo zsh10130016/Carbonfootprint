@@ -10,11 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -97,6 +99,24 @@ class CarbonfootprintApplicationTests {
 						.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data[0].rank").value(1));
+	}
+
+	@Test
+	void shouldBindOcrMultipartRequest() throws Exception {
+		String token = registerAndGetToken();
+		MockMultipartFile file = new MockMultipartFile(
+				"file",
+				"ticket.png",
+				"image/png",
+				new byte[]{1, 2, 3}
+		);
+
+		mockMvc.perform(multipart("/api/ocr/parse")
+						.file(file)
+						.param("documentType", "TRANSPORT_TICKET")
+						.header("Authorization", "Bearer " + token))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("请先配置百度 OCR API Key 和 Secret Key"));
 	}
 
 	private String registerAndGetToken() throws Exception {

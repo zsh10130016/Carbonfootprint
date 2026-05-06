@@ -42,5 +42,5 @@ export const articleApi = {
 }
 
 export const ocrApi = {
-  parse: (payload) => http.post('/api/ocr/parse', payload).then((res) => res.data)
+  parse: (payload) => http.post('/api/ocr/parse', payload, { timeout: 60000 }).then((res) => res.data)
 }
