@@ -21,3 +21,9 @@ app:
   jwt:
     secret: ${APP_JWT_SECRET:carbonfootprint-demo-secret-carbonfootprint-demo-secret}
     expiration-millis: ${APP_JWT_EXPIRATION_MILLIS:86400000}
+  baidu-ocr:
+    api-key: ${BAIDU_OCR_API_KEY:e53CntkqvOGnAeKiePcANksB}
+    secret-key: ${BAIDU_OCR_SECRET_KEY:JxzBvTaqMKmTcsrHCQrHJT8Z3ZGUe890}
+    token-url: https://aip.baidubce.com/oauth/2.0/token
+    ocr-url: https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic
+    max-upload-size: 4MB

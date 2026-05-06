@@ -1,32 +1,31 @@
 package com.zhangsihan.carbonfootprint.service;
 
-import com.zhangsihan.carbonfootprint.dto.OcrParseRequest;
 import com.zhangsihan.carbonfootprint.vo.OcrParseResultVO;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
+@RequiredArgsConstructor
 public class OcrService {
 
-    public OcrParseResultVO parse(OcrParseRequest request) {
-        Map<String, String> fields = new LinkedHashMap<>();
-        String type = request.getDocumentType().trim().toUpperCase();
-        if ("TRANSPORT_TICKET".equals(type)) {
-            fields.put("subType", "TRAIN");
-            fields.put("amount", "15.00");
-            fields.put("unit", "km");
-        } else if ("UTILITY_BILL".equals(type)) {
-            fields.put("subType", "ELECTRICITY");
-            fields.put("amount", "18.00");
-            fields.put("unit", "kWh");
-        }
+    private final BaiduOcrClient baiduOcrClient;
+    private final OcrFieldExtractor fieldExtractor;
+
+    public OcrParseResultVO parse(String documentType, MultipartFile file) {
+        List<String> words = baiduOcrClient.recognize(file);
+        Map<String, String> fields = fieldExtractor.extractFields(documentType, words);
+        boolean complete = fields.containsKey("subType") && fields.containsKey("amount");
+
         return OcrParseResultVO.builder()
                 .supported(true)
-                .provider("mock")
-                .documentType(type)
-                .message("当前阶段使用 mock provider 预留 OCR 接口，后续可替换为百度 OCR。")
+                .provider("百度 OCR")
+                .documentType(documentType.trim().toUpperCase())
+                .message(complete ? "识别成功，已提取可用于碳记录的字段。" : "识别成功，但部分字段需要人工补充。")
                 .fields(fields)
+                .recognizedText(words)
                 .build();
     }
 }

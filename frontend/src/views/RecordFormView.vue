@@ -141,6 +141,9 @@ function applyPrefillFromQuery() {
   if (typeof route.query.amount === 'string') {
     form.amount = route.query.amount
   }
+  if (typeof route.query.unit === 'string' && route.query.unit) {
+    form.unit = route.query.unit
+  }
   if (typeof route.query.note === 'string') {
     form.note = route.query.note
   }

@@ -1,7 +1,7 @@
 <template>
   <AppShell>
     <div class="stack">
-      <PanelCard title="票据解析" subtitle="将票据文本解析为结构化字段，并带入碳记录表单。当前为内置解析模式，后续可接入真实 OCR 服务。">
+      <PanelCard title="OCR 智能识别" subtitle="上传交通票据或水电账单图片，系统会识别文字并提取可用于碳核算的字段。">
         <form class="stack" @submit.prevent="parse">
           <div class="field-grid">
             <div class="field">
@@ -11,24 +11,28 @@
                 <option value="UTILITY_BILL">水电账单</option>
               </select>
             </div>
+            <div class="field">
+              <label>票据图片</label>
+              <input accept="image/*" type="file" @change="handleFileChange" />
+            </div>
           </div>
 
-          <div class="field">
-            <label>原始文本</label>
-            <textarea
-              v-model="form.rawText"
-              rows="7"
-              placeholder="可粘贴交通票据或水电账单文本，例如：高铁票 杭州东到上海虹桥 15km"
-            />
+          <div v-if="previewUrl" class="preview-panel">
+            <img :src="previewUrl" alt="待识别票据预览" />
+            <div>
+              <strong>{{ selectedFile?.name }}</strong>
+              <p class="helper-text">{{ fileSizeText }}</p>
+            </div>
           </div>
-          <p class="helper-text">解析完成后可以直接带入记录表单，再由系统继续完成碳核算和积分计算。</p>
+
+          <p class="helper-text">图片建议保持清晰、完整，尽量包含里程、用电量、用水量或用气量等关键字段。</p>
           <p v-if="message" :class="['feedback', isError ? 'error' : 'info']">{{ message }}</p>
 
           <div class="submit-row">
             <button class="button-primary" type="submit" :disabled="submitting">
-              {{ submitting ? '识别中...' : '开始识别' }}
+              {{ submitting ? '识别中...' : '上传并识别' }}
             </button>
-            <button class="button-secondary" type="button" @click="fillSample">快速填充参考文本</button>
+            <button class="button-secondary" type="button" :disabled="submitting || !selectedFile" @click="clearFile">重新选择</button>
           </div>
         </form>
       </PanelCard>
@@ -46,21 +50,24 @@
             </div>
             <div class="field">
               <label>推荐子类型</label>
-              <input :value="result.fields?.subType || ''" readonly />
+              <input :value="mappedSubTypeLabel" readonly />
             </div>
             <div class="field">
               <label>推荐数值</label>
-              <input :value="result.fields?.amount || ''" readonly />
+              <input :value="amountText" readonly />
             </div>
           </div>
 
           <div class="field">
-            <label>识别字段</label>
-            <pre class="result-box">{{ prettyResult }}</pre>
+            <label>识别到的文字</label>
+            <pre class="result-box">{{ recognizedText }}</pre>
           </div>
 
+          <p v-if="!canFillRecord" class="feedback error">暂未提取到完整数值，请换一张更清晰的图片，或到记录表单中手动补充。</p>
+
           <div class="submit-row">
-            <button class="button-primary" @click="goToRecordForm">带入记录表单</button>
+            <button class="button-primary" :disabled="!canFillRecord" @click="goToRecordForm">带入记录表单</button>
+            <RouterLink class="button-secondary inline-link" to="/records/new">手动新增记录</RouterLink>
           </div>
         </div>
       </PanelCard>
@@ -69,32 +76,40 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { ocrApi } from '../api/modules'
 import AppShell from '../components/AppShell.vue'
 import PanelCard from '../components/PanelCard.vue'
+import { activityOptions } from '../config/activity-options'
 
 const router = useRouter()
 const submitting = ref(false)
 const result = ref(null)
+const selectedFile = ref(null)
+const previewUrl = ref('')
 const message = ref('')
 const isError = ref(false)
 const form = reactive({
-  documentType: 'TRANSPORT_TICKET',
-  rawText: ''
+  documentType: 'TRANSPORT_TICKET'
 })
 
-const mappedActivityType = computed(() => (
+const fields = computed(() => result.value?.fields || {})
+const mappedActivityType = computed(() => fields.value.activityType || (
   form.documentType === 'UTILITY_BILL' ? 'HOME_ENERGY' : 'TRANSPORT'
 ))
-
-const mappedActivityTypeLabel = computed(() => (
-  mappedActivityType.value === 'HOME_ENERGY' ? '家庭用能' : '绿色出行'
+const mappedActivityTypeLabel = computed(() => activityOptions[mappedActivityType.value]?.label || mappedActivityType.value)
+const mappedSubTypeLabel = computed(() => (
+  activityOptions[mappedActivityType.value]?.subTypes.find((item) => item.value === fields.value.subType)?.label || fields.value.subType || '待补充'
 ))
-
-const prettyResult = computed(() => JSON.stringify(result.value?.fields || {}, null, 2))
+const amountText = computed(() => fields.value.amount ? `${fields.value.amount} ${fields.value.unit || ''}` : '待补充')
+const canFillRecord = computed(() => Boolean(fields.value.activityType && fields.value.subType && fields.value.amount))
+const recognizedText = computed(() => (result.value?.recognizedText || []).join('\n'))
+const fileSizeText = computed(() => {
+  if (!selectedFile.value) return ''
+  return `${(selectedFile.value.size / 1024 / 1024).toFixed(2)} MB`
+})
 
 watch(
   () => form.documentType,
@@ -105,45 +120,73 @@ watch(
   }
 )
 
+onBeforeUnmount(() => {
+  revokePreview()
+})
+
 async function parse() {
-  if (!form.rawText.trim()) {
+  if (!selectedFile.value) {
     isError.value = true
-    message.value = '请先输入待解析的票据文本。'
+    message.value = '请先选择需要识别的票据图片。'
     return
   }
+
+  const formData = new FormData()
+  formData.append('documentType', form.documentType)
+  formData.append('file', selectedFile.value)
 
   submitting.value = true
   message.value = ''
   isError.value = false
   try {
-    result.value = await ocrApi.parse({ ...form })
-    message.value = '解析完成，请确认识别字段后再带入记录表单。'
+    result.value = await ocrApi.parse(formData)
+    message.value = canFillRecord.value ? '识别完成，可带入记录表单。' : '识别完成，部分字段需要人工确认。'
   } catch (error) {
     isError.value = true
-    message.value = error.message || '票据解析失败，请检查输入内容后重试。'
+    message.value = error.message || '图片识别失败，请检查百度 OCR 配置或更换图片后重试。'
   } finally {
     submitting.value = false
   }
 }
 
-function fillSample() {
-  if (form.documentType === 'UTILITY_BILL') {
-    form.rawText = '电费账单：本期用电 18 度，账单金额 12.6 元'
-  } else {
-    form.rawText = '交通票据：高铁行程 15 km，杭州东到上海虹桥'
+function handleFileChange(event) {
+  const file = event.target.files?.[0]
+  result.value = null
+  message.value = ''
+  isError.value = false
+  selectedFile.value = file || null
+  revokePreview()
+  if (file) {
+    previewUrl.value = URL.createObjectURL(file)
+  }
+}
+
+function clearFile() {
+  selectedFile.value = null
+  result.value = null
+  message.value = ''
+  isError.value = false
+  revokePreview()
+}
+
+function revokePreview() {
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
   }
 }
 
 function goToRecordForm() {
-  if (!result.value) return
+  if (!canFillRecord.value) return
   router.push({
     path: '/records/new',
     query: {
-      source: '票据解析',
-      activityType: mappedActivityType.value,
-      subType: result.value.fields?.subType || '',
-      amount: result.value.fields?.amount || '',
-      note: `${mappedActivityTypeLabel.value}票据解析导入`
+      source: '百度 OCR',
+      activityType: fields.value.activityType,
+      subType: fields.value.subType,
+      amount: fields.value.amount,
+      unit: fields.value.unit || '',
+      note: `${mappedActivityTypeLabel.value}票据识别导入`
     }
   })
 }
@@ -156,11 +199,48 @@ function goToRecordForm() {
   flex-wrap: wrap;
 }
 
+.preview-panel {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.preview-panel img {
+  width: 132px;
+  height: 92px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(47, 143, 91, 0.16);
+}
+
 .result-box {
   margin: 0;
+  max-height: 260px;
   padding: 14px;
   border-radius: 16px;
   background: rgba(47, 143, 91, 0.08);
   overflow: auto;
+  white-space: pre-wrap;
+}
+
+.inline-link {
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .preview-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .preview-panel img {
+    width: 100%;
+    height: 180px;
+  }
 }
 </style>

@@ -42,5 +42,5 @@ export const articleApi = {
 }
 
 export const ocrApi = {
-  parse: (payload) => http.post('/api/ocr/parse', payload).then((res) => res.data)
+  parse: (formData) => http.post('/api/ocr/parse', formData).then((res) => res.data)
 }
