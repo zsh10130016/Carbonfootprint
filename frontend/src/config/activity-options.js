@@ -28,7 +28,10 @@ export const activityOptions = {
       { value: 'PORK', label: '猪肉' },
       { value: 'CHICKEN', label: '鸡肉' },
       { value: 'VEGETABLE', label: '蔬菜' },
-      { value: 'DAIRY', label: '乳制品' }
+      { value: 'DAIRY', label: '乳制品' },
+      { value: 'RICE', label: '大米' },
+      { value: 'EGG', label: '鸡蛋' },
+      { value: 'TOFU', label: '豆腐' }
     ]
   }
 }

@@ -109,8 +109,9 @@ public class CarbonRecordService {
             case "HOME_ENERGY" -> 18;
             case "FOOD" -> switch (subType) {
                 case "VEGETABLE" -> 16;
+                case "TOFU" -> 14;
+                case "DAIRY", "RICE", "EGG" -> 10;
                 case "CHICKEN" -> 11;
-                case "DAIRY" -> 9;
                 case "PORK" -> 6;
                 case "BEEF" -> 3;
                 default -> 8;

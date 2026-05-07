@@ -1,18 +1,26 @@
-INSERT IGNORE INTO emission_factor (activity_type, sub_type, unit, factor_value, factor_name, description) VALUES
-('TRANSPORT', 'BUS', 'km', 0.0800, '公交车出行', '适合城市通勤的低碳公共交通'),
-('TRANSPORT', 'SUBWAY', 'km', 0.0500, '地铁出行', '城市轨道交通平均排放因子'),
-('TRANSPORT', 'BIKE', 'km', 0.0050, '骑行', '近似视为极低碳出行'),
-('TRANSPORT', 'WALK', 'km', 0.0000, '步行', '步行不产生直接化石能源排放'),
-('TRANSPORT', 'TAXI', 'km', 0.1900, '出租车', '以城市出租燃油车平均排放估算'),
-('TRANSPORT', 'TRAIN', 'km', 0.0400, '火车/高铁', '长距离公共交通较低排放'),
-('HOME_ENERGY', 'ELECTRICITY', 'kWh', 0.5600, '家庭用电', '依据火电占比估算的平均排放因子'),
-('HOME_ENERGY', 'NATURAL_GAS', 'm3', 2.1000, '天然气', '居民天然气直接燃烧排放'),
-('HOME_ENERGY', 'WATER', 'ton', 0.3000, '生活用水', '供水与污水处理的综合排放估算'),
-('FOOD', 'BEEF', 'kg', 27.0000, '牛肉消费', '高碳足迹肉类'),
-('FOOD', 'PORK', 'kg', 12.1000, '猪肉消费', '中等偏高碳足迹肉类'),
-('FOOD', 'CHICKEN', 'kg', 6.9000, '鸡肉消费', '相对较低碳足迹肉类'),
-('FOOD', 'VEGETABLE', 'kg', 2.0000, '蔬菜消费', '植物性食物碳足迹较低'),
-('FOOD', 'DAIRY', 'kg', 3.2000, '乳制品消费', '奶类加工综合排放估算');
+-- 采用“活动数据 × 排放因子”口径；重复执行时会刷新已有因子。
+INSERT INTO emission_factor (activity_type, sub_type, unit, factor_value, factor_name, description) VALUES
+('TRANSPORT', 'BUS', 'km', 0.0270, '公交车出行', 'IPCC 柴油燃烧因子结合城市公交平均载客量折算为人公里'),
+('TRANSPORT', 'SUBWAY', 'km', 0.0300, '地铁出行', '按电力消费因子与轨道交通单位人公里电耗简化估算'),
+('TRANSPORT', 'BIKE', 'km', 0.0000, '骑行', '按 IPCC 直接排放口径，骑行直接化石能源排放为 0'),
+('TRANSPORT', 'WALK', 'km', 0.0000, '步行', '按 IPCC 直接排放口径，步行直接化石能源排放为 0'),
+('TRANSPORT', 'TAXI', 'km', 0.1850, '出租车', 'IPCC 汽油燃烧因子结合乘用车典型油耗折算为车公里'),
+('TRANSPORT', 'TRAIN', 'km', 0.0250, '火车/高铁', '按电力消费因子与铁路单位人公里电耗简化估算'),
+('HOME_ENERGY', 'ELECTRICITY', 'kWh', 0.5777, '家庭用电', '采用生态环境部、国家统计局和国家能源局发布的 2024 年全国电力平均碳足迹因子'),
+('HOME_ENERGY', 'NATURAL_GAS', 'm3', 2.1840, '天然气', '按 IPCC 天然气默认 CO2 因子 56100 kg/TJ 及常用低位热值折算'),
+('HOME_ENERGY', 'WATER', 'ton', 0.3000, '生活用水', '按供水和污水处理电耗乘以电力因子的简化估算'),
+('FOOD', 'BEEF', 'kg', 60.0000, '牛肉消费', 'Poore & Nemecek/OWID 食物 LCA 全球平均 CO2e 因子'),
+('FOOD', 'PORK', 'kg', 7.6000, '猪肉消费', 'Poore & Nemecek/OWID 食物 LCA 全球平均 CO2e 因子'),
+('FOOD', 'CHICKEN', 'kg', 6.9000, '鸡肉消费', 'Poore & Nemecek/OWID 食物 LCA 全球平均 CO2e 因子'),
+('FOOD', 'VEGETABLE', 'kg', 0.5000, '蔬菜消费', 'Poore & Nemecek/OWID 植物性食物 LCA 简化因子'),
+('FOOD', 'DAIRY', 'kg', 3.2000, '乳制品消费', 'Poore & Nemecek/OWID 乳制品 LCA 简化因子'),
+('FOOD', 'RICE', 'kg', 4.0000, '大米消费', 'Poore & Nemecek/OWID 稻米 LCA 全球平均 CO2e 因子'),
+('FOOD', 'EGG', 'kg', 4.5000, '鸡蛋消费', 'Poore & Nemecek/OWID 鸡蛋 LCA 全球平均 CO2e 因子'),
+('FOOD', 'TOFU', 'kg', 3.0000, '豆腐消费', 'Poore & Nemecek/OWID 豆制品 LCA 简化因子')
+ON DUPLICATE KEY UPDATE
+    factor_value = VALUES(factor_value),
+    factor_name = VALUES(factor_name),
+    description = VALUES(description);
 
 INSERT IGNORE INTO advice_rule (activity_type, threshold_kg, period_days, title, description, suggestion) VALUES
 ('TRANSPORT', 25.00, 7, '交通排放偏高', '最近一周交通相关碳排放已经偏高，说明高频机动出行较多。', '尝试把短途打车替换为公交、地铁或骑行，每周至少安排 2 天绿色通勤。'),
