@@ -14,4 +14,8 @@ public class AdviceVO {
     private BigDecimal actualEmission;
     private BigDecimal threshold;
     private Integer periodDays;
+    private String metricLabel;
+    private String compareLabel;
+    private String metricUnit;
+    private String basis;
 }

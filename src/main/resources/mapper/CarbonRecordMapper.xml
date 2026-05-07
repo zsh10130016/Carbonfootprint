@@ -98,6 +98,26 @@
           AND occurred_at <![CDATA[>=]]> #{startTime}
     </select>
 
+    <select id="sumEmissionByActivityBetween" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(emission_kg), 0)
+        FROM carbon_record
+        WHERE user_id = #{userId}
+          AND activity_type = #{activityType}
+          AND occurred_at <![CDATA[>=]]> #{startTime}
+          AND occurred_at <![CDATA[<]]> #{endTime}
+    </select>
+
+    <select id="findSubtypeEmissionsSince" resultType="com.zhangsihan.carbonfootprint.vo.SubtypeEmissionStatVO">
+        SELECT activity_type AS activityType,
+               sub_type AS subType,
+               ROUND(SUM(emission_kg), 2) AS emissionKg
+        FROM carbon_record
+        WHERE user_id = #{userId}
+          AND occurred_at <![CDATA[>=]]> #{startTime}
+        GROUP BY activity_type, sub_type
+        ORDER BY emissionKg DESC
+    </select>
+
     <select id="countByUserId" resultType="java.lang.Integer">
         SELECT COUNT(1)
         FROM carbon_record

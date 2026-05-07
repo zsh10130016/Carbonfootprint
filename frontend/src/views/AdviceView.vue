@@ -10,12 +10,8 @@
             <h3>{{ item.title }}</h3>
             <p class="muted">{{ item.description }}</p>
             <div class="metric-row">
-              <strong>当前排放</strong>
-              <span>{{ Number(item.actualEmission).toFixed(2) }} kg</span>
-            </div>
-            <div class="metric-row">
-              <strong>阈值</strong>
-              <span>{{ Number(item.threshold).toFixed(2) }} kg / {{ item.periodDays }} 天</span>
+              <strong>{{ item.metricLabel || '当前排放' }}</strong>
+              <span>{{ formatMetric(item.actualEmission, item.metricUnit || 'kgCO2e') }}</span>
             </div>
             <p class="suggestion">{{ item.suggestion }}</p>
           </article>
@@ -50,6 +46,13 @@ async function loadAdvice() {
     loading.value = false
   }
 }
+
+function formatMetric(value, unit) {
+  const number = Number(value || 0)
+  if (unit === '条') return `${number.toFixed(0)} 条`
+  if (unit === '%') return `${number.toFixed(0)}%`
+  return `${number.toFixed(2)} ${unit}`
+}
 </script>
 
 <style scoped>
@@ -80,4 +83,5 @@ async function loadAdvice() {
   border-radius: 16px;
   background: rgba(47, 143, 91, 0.08);
 }
+
 </style>

@@ -4,6 +4,7 @@ import com.zhangsihan.carbonfootprint.dto.CarbonRecordQueryRequest;
 import com.zhangsihan.carbonfootprint.entity.CarbonRecord;
 import com.zhangsihan.carbonfootprint.vo.CategoryStatVO;
 import com.zhangsihan.carbonfootprint.vo.SourceRatioVO;
+import com.zhangsihan.carbonfootprint.vo.SubtypeEmissionStatVO;
 import com.zhangsihan.carbonfootprint.vo.TrendPointVO;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,6 +31,14 @@ public interface CarbonRecordMapper {
     BigDecimal sumEmissionByActivitySince(@Param("userId") Long userId,
                                           @Param("activityType") String activityType,
                                           @Param("startTime") LocalDateTime startTime);
+
+    BigDecimal sumEmissionByActivityBetween(@Param("userId") Long userId,
+                                            @Param("activityType") String activityType,
+                                            @Param("startTime") LocalDateTime startTime,
+                                            @Param("endTime") LocalDateTime endTime);
+
+    List<SubtypeEmissionStatVO> findSubtypeEmissionsSince(@Param("userId") Long userId,
+                                                          @Param("startTime") LocalDateTime startTime);
 
     Integer countByUserId(Long userId);
 
