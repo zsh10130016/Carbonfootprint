@@ -14,6 +14,9 @@ public class ResetPasswordRequest {
     @Email(message = "邮箱格式不正确")
     private String email;
 
+    @NotBlank(message = "邮箱验证码不能为空")
+    private String emailCode;
+
     @NotBlank(message = "新密码不能为空")
     @Size(min = 6, max = 20, message = "密码长度应在 6-20 位之间")
     private String newPassword;

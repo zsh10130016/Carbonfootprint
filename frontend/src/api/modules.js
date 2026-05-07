@@ -1,6 +1,7 @@
 import http from './http'
 
 export const authApi = {
+  sendEmailCode: (payload) => http.post('/api/auth/email-code', payload).then((res) => res.data),
   register: (payload) => http.post('/api/auth/register', payload).then((res) => res.data),
   login: (payload) => http.post('/api/auth/login', payload).then((res) => res.data),
   resetPassword: (payload) => http.post('/api/auth/password/reset', payload).then((res) => res.data)

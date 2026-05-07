@@ -44,6 +44,15 @@
             <label>姓名</label>
             <input v-model="form.fullName" placeholder="请输入姓名" />
           </div>
+          <div v-if="mode !== 'login'" class="field">
+            <label>邮箱验证码</label>
+            <div class="code-field">
+              <input v-model="form.emailCode" inputmode="numeric" maxlength="6" placeholder="6 位验证码" />
+              <button class="button-secondary" type="button" :disabled="codeSending || codeCountdown > 0" @click="sendEmailCode">
+                {{ codeButtonText }}
+              </button>
+            </div>
+          </div>
           <div class="field">
             <label>{{ mode === 'reset' ? '新密码' : '密码' }}</label>
             <input v-model="form.password" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" type="password" placeholder="请输入密码" />
@@ -79,12 +88,15 @@ const modes = [
 
 const mode = ref('login')
 const submitting = ref(false)
+const codeSending = ref(false)
+const codeCountdown = ref(0)
 const message = ref('')
 const isError = ref(false)
 const form = reactive({
   account: '',
   username: '',
   email: '',
+  emailCode: '',
   fullName: '',
   password: ''
 })
@@ -92,19 +104,54 @@ const form = reactive({
 const currentLabel = computed(() => (
   mode.value === 'login' ? '进入系统' : mode.value === 'register' ? '创建账号' : '重置密码'
 ))
+const codeButtonText = computed(() => (
+  codeCountdown.value > 0 ? `${codeCountdown.value}s` : codeSending.value ? '发送中...' : '发送验证码'
+))
 const modeHint = computed(() => (
   mode.value === 'login'
     ? '支持使用用户名或邮箱登录。'
     : mode.value === 'register'
-      ? '注册后会自动进入系统，并创建个人碳足迹档案。'
-      : '输入用户名、邮箱和新密码后即可完成密码重置。'
+      ? '注册前需要先完成邮箱验证码校验。'
+      : '重置密码前需要完成邮箱验证码校验，避免账号被误操作。'
 ))
 
 function switchMode(nextMode) {
   mode.value = nextMode
   message.value = ''
   isError.value = false
+  form.emailCode = ''
   form.password = ''
+  codeCountdown.value = 0
+}
+
+async function sendEmailCode() {
+  if (!form.email.trim()) {
+    isError.value = true
+    message.value = '请先输入邮箱。'
+    return
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    isError.value = true
+    message.value = '请输入正确的邮箱格式。'
+    return
+  }
+
+  codeSending.value = true
+  message.value = ''
+  isError.value = false
+  try {
+    await authApi.sendEmailCode({
+      email: form.email,
+      purpose: mode.value === 'reset' ? 'RESET_PASSWORD' : 'REGISTER'
+    })
+    message.value = '验证码已发送，请查收邮箱。'
+    startCodeCountdown()
+  } catch (error) {
+    isError.value = true
+    message.value = error.message
+  } finally {
+    codeSending.value = false
+  }
 }
 
 async function submit() {
@@ -129,7 +176,8 @@ async function submit() {
         username: form.username,
         email: form.email,
         fullName: form.fullName,
-        password: form.password
+        password: form.password,
+        emailCode: form.emailCode
       })
       router.push('/dashboard')
       return
@@ -137,6 +185,7 @@ async function submit() {
     await authApi.resetPassword({
       username: form.username,
       email: form.email,
+      emailCode: form.emailCode,
       newPassword: form.password
     })
     message.value = '密码已重置，现在可以直接登录。'
@@ -164,7 +213,18 @@ function validateForm() {
   if (!form.password) return mode.value === 'reset' ? '请输入新密码。' : '请输入密码。'
   if (form.password.length < 6 || form.password.length > 20) return '密码长度需在 6 到 20 位之间。'
   if (mode.value === 'register' && !form.fullName.trim()) return '请输入姓名。'
+  if (!/^\d{6}$/.test(form.emailCode.trim())) return '请输入 6 位邮箱验证码。'
   return ''
+}
+
+function startCodeCountdown() {
+  codeCountdown.value = 60
+  const timer = window.setInterval(() => {
+    codeCountdown.value -= 1
+    if (codeCountdown.value <= 0) {
+      window.clearInterval(timer)
+    }
+  }, 1000)
 }
 </script>
 
@@ -245,6 +305,12 @@ function validateForm() {
   width: 100%;
 }
 
+.code-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 10px;
+}
+
 @media (max-width: 960px) {
   .login-page {
     grid-template-columns: 1fr;
@@ -253,6 +319,12 @@ function validateForm() {
   .login-hero,
   .auth-card {
     padding: 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .code-field {
+    grid-template-columns: 1fr;
   }
 }
 </style>

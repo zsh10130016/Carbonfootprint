@@ -10,8 +10,15 @@ spring:
       encoding: UTF-8
       schema-locations: classpath:schema.sql
       data-locations: classpath:data.sql
+  mail:
+    host: localhost
+    port: 2525
 
 app:
   cors:
     allowed-origins:
       - http://localhost:5173
+  email-verification:
+    expires-in: 10m
+    resend-interval: 60s
+    fixed-code: 123456

@@ -24,6 +24,7 @@ public class AuthService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional
     public AuthResponseVO register(RegisterRequest request) {
@@ -33,6 +34,7 @@ public class AuthService {
         if (userMapper.findByEmail(request.getEmail()) != null) {
             throw new BusinessException(ErrorCode.CONFLICT, "邮箱已被占用");
         }
+        emailVerificationService.verifyRegisterCode(request.getEmail(), request.getEmailCode());
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -58,6 +60,7 @@ public class AuthService {
         if (user == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "没有找到匹配的账号信息");
         }
+        emailVerificationService.verifyResetPasswordCode(request.getEmail(), request.getEmailCode());
         userMapper.updatePassword(user.getId(), passwordEncoder.encode(request.getNewPassword()));
     }
 

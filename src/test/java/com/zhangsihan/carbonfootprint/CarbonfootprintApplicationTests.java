@@ -10,11 +10,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.greaterThan;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,6 +36,9 @@ class CarbonfootprintApplicationTests {
 	@Autowired
 	private ObjectMapper objectMapper;
 
+	@MockitoBean
+	private JavaMailSender javaMailSender;
+
 	@Test
 	void shouldRejectProtectedEndpointWithoutToken() throws Exception {
 		mockMvc.perform(get("/api/users/me"))
@@ -42,13 +49,16 @@ class CarbonfootprintApplicationTests {
 	@Test
 	void shouldRegisterAndLoginSuccessfully() throws Exception {
 		String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+		String email = username + "@example.com";
+		sendCode(email);
 		mockMvc.perform(post("/api/auth/register")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(Map.of(
 								"username", username,
-								"email", username + "@example.com",
+								"email", email,
 								"fullName", "Test User",
-								"password", "123456"
+								"password", "123456",
+								"emailCode", "123456"
 						))))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.success").value(true))
@@ -63,6 +73,44 @@ class CarbonfootprintApplicationTests {
 						))))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.tokenType").value("Bearer"));
+	}
+
+	@Test
+	void shouldResetPasswordWithEmailCode() throws Exception {
+		String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+		String email = username + "@example.com";
+		sendCode(email);
+		mockMvc.perform(post("/api/auth/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(Map.of(
+								"username", username,
+								"email", email,
+								"fullName", "Test User",
+								"password", "123456",
+								"emailCode", "123456"
+						))))
+				.andExpect(status().isOk());
+
+		sendCode(email, "RESET_PASSWORD");
+		mockMvc.perform(post("/api/auth/password/reset")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(Map.of(
+								"username", username,
+								"email", email,
+								"emailCode", "123456",
+								"newPassword", "654321"
+						))))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.success").value(true));
+
+		mockMvc.perform(post("/api/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(Map.of(
+								"account", username,
+								"password", "654321"
+						))))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.token").isNotEmpty());
 	}
 
 	@Test
@@ -121,13 +169,16 @@ class CarbonfootprintApplicationTests {
 
 	private String registerAndGetToken() throws Exception {
 		String username = "user_" + UUID.randomUUID().toString().substring(0, 8);
+		String email = username + "@example.com";
+		sendCode(email);
 		String response = mockMvc.perform(post("/api/auth/register")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(Map.of(
 								"username", username,
-								"email", username + "@example.com",
+								"email", email,
 								"fullName", "Test User",
-								"password", "123456"
+								"password", "123456",
+								"emailCode", "123456"
 						))))
 				.andExpect(status().isOk())
 				.andReturn()
@@ -135,5 +186,20 @@ class CarbonfootprintApplicationTests {
 				.getContentAsString();
 		JsonNode root = objectMapper.readTree(response);
 		return root.path("data").path("token").asText();
+	}
+
+	private void sendCode(String email) throws Exception {
+		sendCode(email, "REGISTER");
+	}
+
+	private void sendCode(String email, String purpose) throws Exception {
+		doNothing().when(javaMailSender).send(any(org.springframework.mail.SimpleMailMessage.class));
+		mockMvc.perform(post("/api/auth/email-code")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(Map.of(
+								"email", email,
+								"purpose", purpose
+						))))
+				.andExpect(status().isOk());
 	}
 }
