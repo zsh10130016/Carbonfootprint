@@ -264,7 +264,7 @@ public class OcrService {
 
     private String buildResultMessage(Map<String, String> fields) {
         if (StringUtils.hasText(fields.get("amount"))) {
-            return "百度 OCR 识别完成，DeepSeek 已提取可用于碳核算的字段。";
+            return "识别完成，已经提取可用于碳核算的字段";
         }
         return "百度 OCR 识别完成，DeepSeek 未能确定数值，请带入表单后手动补充。";
     }
