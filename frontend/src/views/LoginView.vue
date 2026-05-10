@@ -5,11 +5,6 @@
       <p class="hero-copy">
         把日常出行、家庭用能和饮食消费转成可量化的数据，再通过趋势、结构和建议帮你看清自己的低碳轨迹。
       </p>
-      <div class="hero-grid">
-        <div class="hero-chip">碳核算</div>
-        <div class="hero-chip">ECharts 分析</div>
-        <div class="hero-chip">社区排行</div>
-      </div>
     </div>
 
     <section class="glass-card auth-card">
@@ -251,20 +246,6 @@ function startCodeCountdown() {
   color: var(--muted);
   line-height: 1.8;
   font-size: 1.02rem;
-}
-
-.hero-grid {
-  margin-top: 24px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.hero-chip {
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(47, 143, 91, 0.12);
 }
 
 .auth-card {
