@@ -1,13 +1,11 @@
 <template>
   <div class="login-page">
     <div class="login-hero">
-      <p class="hero-tag">Carbon Footprint</p>
       <h1>个人碳足迹计算与管理系统</h1>
       <p class="hero-copy">
         把日常出行、家庭用能和饮食消费转成可量化的数据，再通过趋势、结构和建议帮你看清自己的低碳轨迹。
       </p>
       <div class="hero-grid">
-        <div class="hero-chip">JWT 鉴权</div>
         <div class="hero-chip">碳核算</div>
         <div class="hero-chip">ECharts 分析</div>
         <div class="hero-chip">社区排行</div>
@@ -240,15 +238,6 @@ function startCodeCountdown() {
 
 .login-hero {
   padding: 48px;
-}
-
-.hero-tag {
-  display: inline-block;
-  margin: 0 0 18px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(47, 143, 91, 0.12);
-  color: var(--brand-deep);
 }
 
 .login-hero h1 {
